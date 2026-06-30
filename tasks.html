@@ -254,7 +254,7 @@ function renderTasks() {
       <div class="task-top">
         <span class="task-id">${t.taskId}</span>
         <span class="task-name">${t.task}</span>
-        <span class="priority-badge ${t.priority||'Medium'}">${t.priority||'Medium'}</span>
+        <span class="priority-badge ${['High','Medium','Low'].includes(t.priority)?t.priority:'Medium'}">${['High','Medium','Low'].includes(t.priority)?t.priority:'Medium'}</span>
       </div>
       ${currentTab==='all'?`<div class="task-assigned">👤 ${t.assignedTo}</div>`:''}
       <div class="task-meta">
