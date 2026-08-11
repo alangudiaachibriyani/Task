@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAB — Bonus & Profit Share Report</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --surface: #fff; --surface2: #f0ede6; --border: #e2ddd6;
+    --text: #1a1917; --muted: #7a7670; --accent: #c8401a; --accent-light: #fdf0eb;
+    --green: #1a7a45; --green-light: #eaf5ef; --amber: #a05c00; --amber-light: #fef7ec;
+    --blue: #1a4f8a; --blue-light: #eaf1fb; --red: #b91c1c; --red-light: #fde8e8;
+    --gold: #b8860b; --silver: #8a8a8a; --bronze: #a0622d;
+    --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .header { background: var(--text); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .header-info .title { font-size: 16px; font-weight: 600; }
+  .header-info .sub { font-size: 12px; opacity: 0.6; }
+  .header-links { margin-left: auto; display: flex; gap: 16px; flex-wrap: wrap; }
+  .header-links a { color: #fff; opacity: 0.6; font-size: 12px; text-decoration: none; }
+  .header-links a:hover { opacity: 1; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  /* Filter + bonus pool */
+  .top-row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 24px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field input, .field select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 13px; background: var(--surface); color: var(--text);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .calc-btn { padding: 10px 22px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; height: 40px; align-self: flex-end; }
+  .calc-btn:hover { opacity: 0.9; }
+  .calc-btn:disabled { opacity: 0.5; }
+
+  /* Score weights info */
+  .weights-banner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  .weight-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .weight-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .weight-pct { font-weight: 700; font-size: 15px; }
+  .weights-note { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+  .sum-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .sum-num { font-size: 22px; font-weight: 700; }
+  .sum-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .sum-card.pool .sum-num  { color: var(--green); }
+  .sum-card.staff .sum-num { color: var(--blue); }
+  .sum-card.works .sum-num { color: var(--accent); }
+  .sum-card.disc .sum-num  { color: var(--amber); }
+
+  .section-title { font-size: 15px; font-weight: 600; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* Main bonus table */
+  .bonus-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); text-align: left; padding: 10px 12px; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+  th.group-works { background: #fdf0eb; color: var(--accent); }
+  th.group-disc  { background: #fef7ec; color: var(--amber); }
+  th.group-final { background: #eaf5ef; color: var(--green); }
+  td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: var(--bg); }
+  .rank-cell { font-weight: 700; width: 32px; text-align: center; }
+  .rank-cell.gold   { color: var(--gold); }
+  .rank-cell.silver { color: var(--silver); }
+  .rank-cell.bronze { color: var(--bronze); }
+  .name-cell { font-weight: 600; }
+  .score-bar-wrap { width: 80px; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+  .score-bar { height: 100%; border-radius: 4px; }
+  .works-bar  { background: var(--accent); }
+  .disc-bar   { background: var(--amber); }
+  .final-bar  { background: var(--green); }
+  .bonus-amount { font-weight: 700; font-size: 15px; color: var(--green); }
+  .pct-cell { font-weight: 600; color: var(--blue); }
+  .combined-score { font-weight: 700; font-size: 14px; }
+  .no-data { color: var(--muted); font-size: 12px; }
+
+  /* Score breakdown per person */
+  .breakdown-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .person-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+  .person-name { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  .score-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
+  .score-row .label { color: var(--muted); }
+  .score-row .val   { font-weight: 600; }
+  .score-divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  .final-score-row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700; }
+  .final-score-row .bonus-val { color: var(--green); }
+  .progress-wrap { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+
+  .loading { text-align: center; padding: 50px; color: var(--muted); font-size: 14px; }
+  .empty   { text-align: center; padding: 50px; color: var(--muted); }
+  .error-msg { background: var(--red-light); color: var(--red); padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+
+  .info-box { background: var(--blue-light); border: 1px solid #c0d4ef; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--blue); margin-bottom: 20px; }
+
+  @media print {
+    .header-links, .top-row .calc-btn, .top-row .field:last-child { display: none; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-info">
+    <div class="title">AAB Works Tracker</div>
+    <div class="sub">Bonus & Profit Share Report</div>
+  </div>
+  <div class="header-links">
+    <a href="works/report.html">Works Report</a>
+    <a href="daily/report.html">Discipline Report</a>
+    <a href="works/admin.html">Admin</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="info-box">
+    📊 This report combines <b>Works Score (40%)</b> and <b>Discipline Score (40%)</b> to calculate each person's share of the bonus pool. The remaining <b>20%</b> can be allocated manually (attendance, attitude, etc.).
+  </div>
+
+  <!-- Filters + Pool -->
+  <div class="top-row">
+    <div class="field">
+      <label>Month</label>
+      <input type="month" id="monthPicker" value="">
+    </div>
+    <div class="field">
+      <label>Total Bonus Pool (₹)</label>
+      <input type="number" id="bonusPool" placeholder="e.g. 50000" min="0">
+    </div>
+    <div class="field">
+      <label>Remaining 20% allocation (₹)</label>
+      <input type="number" id="manualPool" placeholder="Optional" min="0">
+    </div>
+    <button class="calc-btn" id="calcBtn" onclick="calculate()">Calculate</button>
+  </div>
+
+  <!-- Weight banner -->
+  <div class="weights-banner">
+    <div class="weight-item">
+      <div class="weight-dot" style="background:var(--accent)"></div>
+      <span class="weight-pct">40%</span>
+      <span>Works Score — task completion quality</span>
+    </div>
+    <div class="weight-item">
+      <div class="weight-dot" style="background:var(--amber)"></div>
+      <span class="weight-pct">40%</span>
+      <span>Discipline Score — daily task punctuality</span>
+    </div>
+    <div class="weight-item">
+      <div class="weight-dot" style="background:var(--muted)"></div>
+      <span class="weight-pct">20%</span>
+      <span>Manual — attendance, attitude, etc.</span>
+    </div>
+    <span class="weights-note">Scores are normalised across the team before splitting the pool</span>
+  </div>
+
+  <div id="errorMsg" style="display:none" class="error-msg"></div>
+
+  <div class="summary-grid" id="summaryGrid">
+    <div class="sum-card pool"><div class="sum-num">₹—</div><div class="sum-label">Bonus pool</div></div>
+    <div class="sum-card staff"><div class="sum-num">—</div><div class="sum-label">Staff included</div></div>
+    <div class="sum-card works"><div class="sum-num">—</div><div class="sum-label">Total works pts</div></div>
+    <div class="sum-card disc"><div class="sum-num">—</div><div class="sum-label">Total discipline pts</div></div>
+  </div>
+
+  <div class="section-title">🏆 Bonus Allocation</div>
+  <div class="bonus-table-wrap" id="bonusTableWrap">
+    <div class="loading">Enter a month and bonus pool, then click Calculate.</div>
+  </div>
+
+  <div class="section-title">👤 Score Breakdown by Person</div>
+  <div class="breakdown-grid" id="breakdownGrid">
+    <div class="loading">Results will appear here.</div>
+  </div>
+
+</div>
+
+<script>
+const WORKS_API = 'https://script.google.com/macros/s/AKfycbzkkSEMDidoAoHvq7hjepgkI_Xcblh6oPSkysrrfMmK2ntuCyGzfV4uSpZM0D7zqmMO2A/exec';
+const DAILY_API = 'https://script.google.com/macros/s/AKfycbwRJ3IduoV6yUQWLi9pdNT0Yq1Ry5JRK-Z-qEva4MaKll2ZsKGEvXaAO_QzwfKemmAJ0A/exec';
+
+// Set default month to current
+const nowDate = new Date();
+document.getElementById('monthPicker').value = nowDate.toISOString().slice(0,7);
+
+function jsonp(url, params, cb) {
+  const id = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+  const qs = Object.entries({...params, callback: id}).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const s  = document.createElement('script');
+  window[id] = d => { delete window[id]; s.remove(); cb(d); };
+  s.src = url + '?' + qs;
+  document.head.appendChild(s);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function fmt(n) { return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+
+function calculate() {
+  const month      = document.getElementById('monthPicker').value;
+  const poolVal    = parseFloat(document.getElementById('bonusPool').value) || 0;
+  const manualVal  = parseFloat(document.getElementById('manualPool').value) || 0;
+  const btn        = document.getElementById('calcBtn');
+
+  showError('');
+  if (!month) { showError('Please select a month.'); return; }
+
+  btn.disabled    = true;
+  btn.textContent = 'Loading…';
+  document.getElementById('bonusTableWrap').innerHTML = '<div class="loading">Fetching works data…</div>';
+  document.getElementById('breakdownGrid').innerHTML  = '<div class="loading">Fetching discipline data…</div>';
+
+  let worksData = null;
+  let discData  = null;
+
+  function tryRender() {
+    if (worksData === null || discData === null) return; // wait for both
+    btn.disabled    = false;
+    btn.textContent = 'Calculate';
+    render(worksData, discData, poolVal, manualVal);
+  }
+
+  // Fetch works dashboard
+  jsonp(WORKS_API, { action: 'getDashboard', month }, res => {
+    if (!res.success) { showError('Failed to load works data: ' + (res.error||'')); btn.disabled=false; btn.textContent='Calculate'; return; }
+    worksData = res.data.leaderboard || [];
+    tryRender();
+  });
+
+  // Fetch discipline report
+  jsonp(DAILY_API, { action: 'getDisciplineReport', month }, res => {
+    if (!res.success) { showError('Failed to load discipline data: ' + (res.error||'')); btn.disabled=false; btn.textContent='Calculate'; return; }
+    discData = res.data || [];
+    tryRender();
+  });
+}
+
+function render(worksData, discData, poolVal, manualVal) {
+  // Build unified person map
+  const people = {};
+
+  worksData.forEach(r => {
+    if (!people[r.name]) people[r.name] = { name: r.name, worksScore: 0, discScore: 0, discTotal: 0, discDone: 0, discMissed: 0 };
+    people[r.name].worksScore = r.score || 0;
+  });
+
+  discData.forEach(r => {
+    if (!people[r.name]) people[r.name] = { name: r.name, worksScore: 0, discScore: 0, discTotal: 0, discDone: 0, discMissed: 0 };
+    people[r.name].discScore  = r.score   || 0;
+    people[r.name].discTotal  = r.total   || 0;
+    people[r.name].discDone   = r.done    || 0;
+    people[r.name].discMissed = r.missed  || 0;
+  });
+
+  const list = Object.values(people);
+  if (!list.length) {
+    document.getElementById('bonusTableWrap').innerHTML = '<div class="empty">No data found for this month. Make sure tasks exist in both trackers.</div>';
+    document.getElementById('breakdownGrid').innerHTML  = '';
+    return;
+  }
+
+  // Normalise scores to 0–100 within team
+  const maxWorks = Math.max(...list.map(p => p.worksScore), 1);
+  const maxDisc  = Math.max(...list.map(p => p.discScore),  1);
+
+  list.forEach(p => {
+    p.worksNorm = Math.round(p.worksScore / maxWorks * 100);
+    p.discNorm  = Math.round(p.discScore  / maxDisc  * 100);
+    // Combined score: 40% works + 40% disc (out of 80, leave 20% for manual)
+    p.combined  = Math.round(p.worksNorm * 0.4 + p.discNorm * 0.4);
+  });
+
+  const totalCombined = list.reduce((s, p) => s + p.combined, 0) || 1;
+  const worksPool  = poolVal * 0.4;
+  const discPool   = poolVal * 0.4;
+  const autoPool   = poolVal * 0.8; // works + disc portion
+
+  list.forEach(p => {
+    p.share      = totalCombined ? p.combined / totalCombined : 0;
+    p.bonusAuto  = Math.round(autoPool * p.share);
+    p.bonusTotal = p.bonusAuto + (manualVal ? Math.round(manualVal * p.share) : 0);
+  });
+
+  // Sort by combined desc
+  list.sort((a,b) => b.combined - a.combined);
+
+  // Summary
+  const totalWorks = list.reduce((s,p) => s + p.worksScore, 0);
+  const totalDisc  = list.reduce((s,p) => s + p.discScore,  0);
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="sum-card pool"><div class="sum-num">${poolVal ? fmt(poolVal) : '₹—'}</div><div class="sum-label">Bonus pool</div></div>
+    <div class="sum-card staff"><div class="sum-num">${list.length}</div><div class="sum-label">Staff included</div></div>
+    <div class="sum-card works"><div class="sum-num">${totalWorks}</div><div class="sum-label">Total works pts</div></div>
+    <div class="sum-card disc"><div class="sum-num">${totalDisc}</div><div class="sum-label">Total discipline pts</div></div>`;
+
+  const medals = ['gold','silver','bronze'];
+  const maxCombined = Math.max(...list.map(p => p.combined), 1);
+
+  // Main table
+  document.getElementById('bonusTableWrap').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th class="group-works">Works Score</th>
+          <th class="group-works">Works (norm)</th>
+          <th class="group-disc">Disc Score</th>
+          <th class="group-disc">Disc (norm)</th>
+          <th class="group-final">Combined (80%)</th>
+          <th class="group-final">Share %</th>
+          ${poolVal ? '<th class="group-final">Bonus (80%)</th>' : ''}
+          ${(poolVal && manualVal) ? '<th class="group-final">+ Manual (20%)</th><th class="group-final">Total Bonus</th>' : ''}
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map((p,i) => `
+        <tr>
+          <td class="rank-cell ${medals[i]||''}">${i+1}</td>
+          <td class="name-cell">${p.name}</td>
+          <td>${p.worksScore}
+            <span class="score-bar-wrap"><span class="score-bar works-bar" style="width:${p.worksNorm}%"></span></span>
+          </td>
+          <td>${p.worksNorm}</td>
+          <td>${p.discScore}
+            <span class="score-bar-wrap"><span class="score-bar disc-bar" style="width:${p.discNorm}%"></span></span>
+          </td>
+          <td>${p.discNorm}</td>
+          <td class="combined-score">${p.combined}
+            <span class="score-bar-wrap"><span class="score-bar final-bar" style="width:${p.combined/maxCombined*100}%"></span></span>
+          </td>
+          <td class="pct-cell">${Math.round(p.share*100)}%</td>
+          ${poolVal ? `<td class="bonus-amount">${fmt(p.bonusAuto)}</td>` : ''}
+          ${(poolVal && manualVal) ? `<td style="color:var(--muted)">${fmt(Math.round(manualVal*p.share))}</td><td class="bonus-amount">${fmt(p.bonusTotal)}</td>` : ''}
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // Person cards
+  document.getElementById('breakdownGrid').innerHTML = list.map(p => `
+    <div class="person-card">
+      <div class="person-name">${p.name}</div>
+      <div class="score-row">
+        <span class="label">Works Score</span>
+        <span class="val" style="color:var(--accent)">${p.worksScore} pts</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${p.worksNorm}%;background:var(--accent)"></div></div>
+      <br>
+      <div class="score-row">
+        <span class="label">Discipline Score</span>
+        <span class="val" style="color:var(--amber)">${p.discScore} pts (${p.discDone}/${p.discTotal} done, ${p.discMissed} missed)</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${p.discNorm}%;background:var(--amber)"></div></div>
+      <hr class="score-divider">
+      <div class="score-row">
+        <span class="label">Combined (80%)</span>
+        <span class="val" style="color:var(--blue)">${p.combined}/80</span>
+      </div>
+      <div class="score-row">
+        <span class="label">Team share</span>
+        <span class="val">${Math.round(p.share*100)}%</span>
+      </div>
+      ${poolVal ? `
+      <hr class="score-divider">
+      <div class="final-score-row">
+        <span>Bonus (80% pool)</span>
+        <span class="bonus-val">${fmt(p.bonusAuto)}</span>
+      </div>
+      ${manualVal ? `<div class="final-score-row" style="font-size:13px;margin-top:6px">
+        <span style="font-weight:400;color:var(--muted)">+ Manual (20%)</span>
+        <span style="color:var(--muted)">${fmt(Math.round(manualVal*p.share))}</span>
+      </div>
+      <div class="final-score-row" style="margin-top:8px">
+        <span>Total Bonus</span>
+        <span class="bonus-val">${fmt(p.bonusTotal)}</span>
+      </div>` : ''}` : ''}
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
