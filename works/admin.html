@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAB Works Tracker — Admin</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e2ddd6;
+    --text: #1a1917;
+    --muted: #7a7670;
+    --accent: #c8401a;
+    --accent-light: #fdf0eb;
+    --green: #1a7a45;
+    --green-light: #eaf5ef;
+    --amber: #a05c00;
+    --amber-light: #fef7ec;
+    --blue: #1a4f8a;
+    --blue-light: #eaf1fb;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .header { background: var(--text); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .header img { height: 36px; border-radius: 6px; }
+  .header-title { font-size: 16px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.6; }
+  .header a { margin-left: auto; color: #fff; opacity: 0.6; font-size: 12px; text-decoration: none; }
+  .header a:hover { opacity: 1; }
+
+  /* PIN screen */
+  .pin-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .pin-card { background: var(--surface); border-radius: 16px; padding: 36px 32px; width: 320px; text-align: center; box-shadow: var(--shadow); }
+  .pin-card h2 { font-size: 20px; margin-bottom: 6px; }
+  .pin-card p { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .pin-input { width: 100%; padding: 12px; font-size: 20px; text-align: center; letter-spacing: 6px; border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; }
+  .pin-input:focus { outline: none; border-color: var(--accent); }
+  .pin-btn { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .pin-btn:hover { opacity: 0.9; }
+  .pin-error { color: var(--accent); font-size: 12px; margin-top: 10px; min-height: 16px; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 18px 16px 60px; }
+
+  .tab-row { display: flex; gap: 6px; margin-bottom: 18px; }
+  .tab { padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* Create form */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 20px; }
+  .form-card h3 { font-size: 16px; margin-bottom: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid.full { grid-template-columns: 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field input, .field select, .field textarea {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .form-actions { margin-top: 18px; display: flex; gap: 10px; }
+  .btn-primary { padding: 10px 22px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .form-msg { font-size: 12px; margin-top: 10px; }
+  .form-msg.success { color: var(--green); }
+  .form-msg.error { color: var(--accent); }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .filter-row select, .filter-row input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); }
+  .filter-count { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  /* Task table */
+  .task-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { background: var(--surface2); text-align: left; padding: 10px 12px; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: var(--bg); }
+  .cell-task { font-weight: 600; max-width: 220px; }
+  .editable-select, .editable-input, .editable-date {
+    border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px; font-size: 12px; width: 100%; font-family: inherit;
+  }
+  .editable-select:hover, .editable-input:hover, .editable-date:hover { border-color: var(--border); background: var(--bg); }
+  .editable-select:focus, .editable-input:focus, .editable-date:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+
+  .priority-tag, .status-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .priority-tag.High { background: #fde8e8; color: #b91c1c; }
+  .priority-tag.Medium { background: var(--amber-light); color: var(--amber); }
+  .priority-tag.Low { background: var(--green-light); color: var(--green); }
+  .status-tag.Open { background: var(--blue-light); color: var(--blue); }
+  .status-tag.In-Progress { background: var(--amber-light); color: var(--amber); }
+  .status-tag.Hold { background: #f3f3f3; color: var(--muted); }
+  .status-tag.Completed { background: var(--green-light); color: var(--green); }
+
+  .overdue-text { color: #b91c1c; font-weight: 600; }
+  .save-row-btn { padding: 4px 12px; background: var(--text); color: #fff; border: none; border-radius: 6px; font-size: 11px; cursor: pointer; }
+  .save-row-btn:hover { opacity: 0.85; }
+  .save-row-btn:disabled { opacity: 0.4; }
+
+  .empty-row td { text-align: center; padding: 40px; color: var(--muted); }
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- PIN Gate -->
+<div class="pin-overlay" id="pinOverlay">
+  <div class="pin-card">
+    <h2>Admin Access</h2>
+    <p>Enter PIN to manage tasks</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="6" placeholder="••••" inputmode="numeric">
+    <button class="pin-btn" onclick="checkPin()">Unlock</button>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<!-- Main UI -->
+<div id="mainUI" style="display:none">
+  <div class="header">
+    <img src="https://raw.githubusercontent.com/alangudiaachibriyani/HR/main/logo.png" alt="AAB" onerror="this.style.display='none'">
+    <div>
+      <div class="header-title">AAB Works Tracker</div>
+      <div class="header-sub">Admin Panel</div>
+    </div>
+    <a href="tasks.html">Staff view →</a>
+  </div>
+
+  <div class="container">
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab('create',this)">+ New Task</button>
+      <button class="tab" onclick="switchTab('manage',this)">Manage Tasks</button>
+    </div>
+
+    <!-- Create Task -->
+    <div id="view-create">
+      <div class="form-card">
+        <h3>Create a new task</h3>
+        <div class="form-grid full" style="margin-bottom:14px">
+          <div class="field">
+            <label>Task description</label>
+            <textarea id="f_task" rows="2" placeholder="e.g. Fix the kitchen exhaust fan"></textarea>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Assign to</label>
+            <select id="f_assignedTo"><option value="">Loading…</option></select>
+          </div>
+          <div class="field">
+            <label>Priority</label>
+            <select id="f_priority">
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Weightage</label>
+            <select id="f_weightage">
+              <option value="1">1 — Light</option>
+              <option value="2" selected>2 — Standard</option>
+              <option value="3">3 — Heavy</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Due date</label>
+            <input type="date" id="f_dueDate">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="createBtn" onclick="createTask()">Create task</button>
+        </div>
+        <div class="form-msg" id="createMsg"></div>
+      </div>
+    </div>
+
+    <!-- Manage Tasks -->
+    <div id="view-manage" style="display:none">
+      <div class="filter-row">
+        <select id="filterPerson" onchange="renderTable()"><option value="">All people</option></select>
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">All statuses</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>Hold</option>
+          <option>Completed</option>
+        </select>
+        <input type="month" id="filterMonth" onchange="renderTable()">
+        <span class="filter-count" id="filterCount"></span>
+      </div>
+      <div class="task-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Task</th><th>Assigned To</th><th>Priority</th><th>Weight</th>
+              <th>Due Date</th><th>Status</th><th>Completed</th><th>Score</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"><tr><td colspan="10" class="loading">Loading tasks…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbzkkSEMDidoAoHvq7hjepgkI_Xcblh6oPSkysrrfMmK2ntuCyGzfV4uSpZM0D7zqmMO2A/exec';
+let employees = [];
+let allTasks  = [];
+let adminPin  = sessionStorage.getItem('aab_admin_pin') || '';
+
+function jsonp(params, cb) {
+  const id = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+  const qs = Object.entries({ ...params, callback: id }).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const s  = document.createElement('script');
+  window[id] = d => { delete window[id]; s.remove(); cb(d); };
+  s.src = API + '?' + qs;
+  document.head.appendChild(s);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+function checkPin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  jsonp({ action: 'verifyPin', pin }, res => {
+    if (res.success) {
+      adminPin = pin;
+      sessionStorage.setItem('aab_admin_pin', pin);
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('mainUI').style.display = 'block';
+      init();
+    } else {
+      document.getElementById('pinError').textContent = 'Incorrect PIN. Try again.';
+      document.getElementById('pinInput').value = '';
+    }
+  });
+}
+document.getElementById('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  loadEmployees();
+  loadTasks();
+}
+
+function loadEmployees() {
+  jsonp({ action: 'getEmployees' }, res => {
+    if (!res.success) return;
+    employees = res.data;
+    document.getElementById('f_assignedTo').innerHTML = employees.map(e => `<option value="${e.name}">${e.name} — ${e.department}</option>`).join('');
+    document.getElementById('filterPerson').innerHTML = '<option value="">All people</option>' + employees.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
+  });
+}
+
+function loadTasks() {
+  jsonp({ action: 'getTasks' }, res => {
+    if (!res.success) return;
+    allTasks = res.data;
+    renderTable();
+  });
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('view-create').style.display = tab === 'create' ? 'block' : 'none';
+  document.getElementById('view-manage').style.display = tab === 'manage' ? 'block' : 'none';
+  if (tab === 'manage') loadTasks();
+}
+
+// ── Create task ───────────────────────────────────────────────────────────────
+function createTask() {
+  const task       = document.getElementById('f_task').value.trim();
+  const assignedTo = document.getElementById('f_assignedTo').value;
+  const priority   = document.getElementById('f_priority').value;
+  const weightage  = document.getElementById('f_weightage').value;
+  const dueDate    = document.getElementById('f_dueDate').value;
+  const msgEl      = document.getElementById('createMsg');
+  const btn        = document.getElementById('createBtn');
+
+  if (!task || !assignedTo || !dueDate) {
+    msgEl.className = 'form-msg error';
+    msgEl.textContent = 'Please fill in task description, assignee, and due date.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  jsonp({
+    action: 'createTask', pin: adminPin,
+    task, assignedTo, priority, weightage, dueDate, createdBy: 'Admin'
+  }, res => {
+    btn.disabled = false;
+    btn.textContent = 'Create task';
+    if (res.success) {
+      msgEl.className = 'form-msg success';
+      msgEl.textContent = `Task ${res.taskId} created ✓`;
+      document.getElementById('f_task').value = '';
+      document.getElementById('f_dueDate').value = '';
+      showToast('Task created');
+    } else {
+      msgEl.className = 'form-msg error';
+      msgEl.textContent = res.error || 'Failed to create task.';
+    }
+  });
+}
+
+// ── Manage table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const person = document.getElementById('filterPerson').value;
+  const status = document.getElementById('filterStatus').value;
+  const month  = document.getElementById('filterMonth').value;
+
+  let tasks = [...allTasks];
+  if (person) tasks = tasks.filter(t => t.assignedTo === person);
+  if (status) tasks = tasks.filter(t => t.status === status);
+  if (month)  tasks = tasks.filter(t => t.taskDate && t.taskDate.startsWith(month));
+
+  tasks.sort((a,b) => (b.taskId||'').localeCompare(a.taskId||''));
+
+  document.getElementById('filterCount').textContent = `${tasks.length} task${tasks.length!==1?'s':''}`;
+
+  if (!tasks.length) {
+    document.getElementById('tableBody').innerHTML = `<tr class="empty-row"><td colspan="10">No tasks match these filters.</td></tr>`;
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('tableBody').innerHTML = tasks.map(t => {
+    const overdue = t.dueDate && t.dueDate < today && t.status !== 'Completed';
+    const statusClass = (t.status||'Open').replace(' ','-');
+    return `
+    <tr id="row-${t.taskId}">
+      <td>${t.taskId}</td>
+      <td class="cell-task">${t.task}</td>
+      <td>
+        <select class="editable-select" id="e_assigned-${t.taskId}">
+          ${employees.map(e => `<option value="${e.name}" ${e.name===t.assignedTo?'selected':''}>${e.name}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="editable-select" id="e_priority-${t.taskId}">
+          <option value="High" ${t.priority==='High'?'selected':''}>High</option>
+          <option value="Medium" ${t.priority==='Medium'?'selected':''}>Medium</option>
+          <option value="Low" ${t.priority==='Low'?'selected':''}>Low</option>
+        </select>
+      </td>
+      <td>
+        <select class="editable-select" id="e_weight-${t.taskId}">
+          <option value="1" ${String(t.weightage)==='1'?'selected':''}>1</option>
+          <option value="2" ${String(t.weightage)==='2'?'selected':''}>2</option>
+          <option value="3" ${String(t.weightage)==='3'?'selected':''}>3</option>
+        </select>
+      </td>
+      <td>
+        <input type="date" class="editable-date" id="e_due-${t.taskId}" value="${t.dueDate||''}">
+        ${overdue?'<div class="overdue-text" style="font-size:10px">OVERDUE</div>':''}
+      </td>
+      <td><span class="status-tag ${statusClass}">${t.status}</span></td>
+      <td>${t.completedDate || '—'}</td>
+      <td>
+        <input type="number" class="editable-input" id="e_score-${t.taskId}" value="${t.score||0}" style="width:55px">
+      </td>
+      <td><button class="save-row-btn" onclick="saveRow('${t.taskId}')">Save</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function saveRow(taskId) {
+  const btn = document.querySelector(`#row-${taskId} .save-row-btn`);
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  jsonp({
+    action: 'updateTask', pin: adminPin, taskId,
+    assignedTo: document.getElementById(`e_assigned-${taskId}`).value,
+    priority:   document.getElementById(`e_priority-${taskId}`).value,
+    weightage:  document.getElementById(`e_weight-${taskId}`).value,
+    dueDate:    document.getElementById(`e_due-${taskId}`).value,
+    score:      document.getElementById(`e_score-${taskId}`).value
+  }, res => {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+    if (res.success) {
+      showToast(`${taskId} updated ✓`);
+      loadTasks();
+    } else {
+      showToast('Error: ' + (res.error || 'Failed'));
+    }
+  });
+}
+
+// ── Auto unlock if PIN already verified this session ───────────────────────────
+if (adminPin) {
+  jsonp({ action: 'verifyPin', pin: adminPin }, res => {
+    if (res.success) {
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('mainUI').style.display = 'block';
+      init();
+    }
+  });
+}
+</script>
+</body>
+</html>

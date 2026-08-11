@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAB Daily Tracker — My Tasks</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --surface: #fff; --surface2: #f0ede6; --border: #e2ddd6;
+    --text: #1a1917; --muted: #7a7670; --accent: #c8401a; --accent-light: #fdf0eb;
+    --green: #1a7a45; --green-light: #eaf5ef; --amber: #a05c00; --amber-light: #fef7ec;
+    --blue: #1a4f8a; --blue-light: #eaf1fb; --red: #b91c1c; --red-light: #fde8e8;
+    --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .header { background: var(--text); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .header-info .title { font-size: 16px; font-weight: 600; }
+  .header-info .sub { font-size: 12px; opacity: 0.6; }
+  .header-date { margin-left: auto; font-size: 12px; opacity: 0.7; text-align: right; }
+
+  /* Overlay */
+  .overlay { position: fixed; inset: 0; background: rgba(26,25,23,0.75); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .picker-card { background: var(--surface); border-radius: 16px; padding: 32px 28px; width: 340px; max-width: 95vw; }
+  .picker-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .picker-card p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .name-btn { padding: 12px 10px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; font-size: 13px; font-weight: 500; text-align: center; transition: all 0.15s; }
+  .name-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .name-btn .dept { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+
+  .topbar { padding: 12px 16px; display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--accent-light); border: 1px solid #f0c4b0; border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 500; color: var(--accent); cursor: pointer; }
+  .user-pill .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+  .tab-row { display: flex; gap: 6px; margin-left: auto; }
+  .tab { padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1.5px solid var(--border); background: transparent; color: var(--muted); transition: all 0.15s; }
+  .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* Stats */
+  .stats { display: flex; gap: 10px; padding: 14px 16px; overflow-x: auto; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; min-width: 110px; flex-shrink: 0; }
+  .stat-num { font-size: 22px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .stat.pending .stat-num { color: var(--blue); }
+  .stat.done .stat-num { color: var(--green); }
+  .stat.missed .stat-num { color: var(--red); }
+  .stat.score .stat-num { color: var(--accent); }
+
+  /* Task cards */
+  .task-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .task-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+
+  .card-banner { height: 4px; }
+  .card-banner.urgent  { background: var(--red); }
+  .card-banner.warning { background: var(--amber); }
+  .card-banner.safe    { background: var(--green); }
+  .card-banner.done    { background: #c9c5bd; }
+  .card-banner.missed  { background: var(--red); }
+
+  .card-body { padding: 14px 16px; }
+  .task-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .task-id { font-size: 11px; color: var(--muted); font-weight: 600; background: var(--surface2); padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+  .task-name { font-size: 15px; font-weight: 700; flex: 1; }
+
+  /* Countdown block — the key visual */
+  .countdown-block { border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+  .countdown-block.safe    { background: var(--green-light); }
+  .countdown-block.warning { background: var(--amber-light); }
+  .countdown-block.urgent  { background: var(--red-light); }
+  .countdown-block.done    { background: var(--green-light); }
+  .countdown-block.missed  { background: var(--red-light); }
+  .countdown-icon { font-size: 24px; }
+  .countdown-info { flex: 1; }
+  .countdown-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .countdown-time  { font-size: 18px; font-weight: 700; }
+  .countdown-time.safe    { color: var(--green); }
+  .countdown-time.warning { color: var(--amber); }
+  .countdown-time.urgent  { color: var(--red); }
+  .countdown-time.done    { color: var(--green); }
+  .countdown-time.missed  { color: var(--red); }
+  .cutoff-text { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .status-pill { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+  .status-pill.Pending  { background: var(--blue-light); color: var(--blue); }
+  .status-pill.Done     { background: var(--green-light); color: var(--green); }
+  .status-pill.Missed   { background: var(--red-light); color: var(--red); }
+
+  .score-badge { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-light); padding: 3px 10px; border-radius: 10px; }
+  .assigned-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+  /* Comment log */
+  .comment-log { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+  .comment-log-title { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .comment-entry { font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .comment-entry:last-child { border-bottom: none; }
+  .comment-entry .ts { font-size: 10px; color: var(--muted); display: block; }
+
+  /* Actions */
+  .task-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .comment-row { display: flex; gap: 6px; flex: 1; min-width: 200px; align-items: flex-end; }
+  .action-group { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .action-label { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .comment-input { width: 100%; font-size: 13px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+  .comment-input:focus { outline: none; border-color: var(--accent); }
+  .close-btn { padding: 8px 18px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; height: 38px; transition: opacity 0.15s; }
+  .close-btn:hover { opacity: 0.88; }
+  .close-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .done-info { font-size: 12px; color: var(--green); font-weight: 500; margin-top: 6px; }
+  .missed-info { font-size: 12px; color: var(--red); font-weight: 500; margin-top: 6px; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .icon { font-size: 40px; margin-bottom: 10px; }
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-info">
+    <div class="title">AAB Daily Tracker</div>
+    <div class="sub">Today's Tasks</div>
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</div>
+
+<!-- Name picker -->
+<div class="overlay" id="overlay">
+  <div class="picker-card">
+    <h2>Who are you?</h2>
+    <p>Select your name to see today's tasks</p>
+    <div class="name-grid" id="nameGrid">
+      <div style="color:#aaa;font-size:13px;grid-column:span 2;text-align:center;padding:20px">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<div id="mainUI" style="display:none">
+  <div class="topbar">
+    <div class="user-pill" onclick="changeName()">
+      <div class="dot"></div>
+      <span id="userName">—</span>
+      <span style="font-size:11px;opacity:0.7">▼</span>
+    </div>
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab('mine',this)">My Tasks</button>
+      <button class="tab" onclick="switchTab('all',this)">All Tasks</button>
+    </div>
+  </div>
+  <div class="stats" id="statsRow"></div>
+  <div class="task-list" id="taskList"><div class="loading">Loading today's tasks…</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API  = 'https://script.google.com/macros/s/AKfycbwRJ3IduoV6yUQWLi9pdNT0Yq1Ry5JRK-Z-qEva4MaKll2ZsKGEvXaAO_QzwfKemmAJ0A/exec';
+let currentUser = localStorage.getItem('aab_daily_user') || '';
+let currentTab  = 'mine';
+let allTasks    = [];
+let countdownTimers = [];
+
+// Date display
+const now = new Date();
+document.getElementById('headerDate').innerHTML =
+  now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+function jsonp(params, cb) {
+  const id = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+  const qs = Object.entries({...params, callback: id}).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const s  = document.createElement('script');
+  window[id] = d => { delete window[id]; s.remove(); cb(d); };
+  s.src = API + '?' + qs;
+  document.head.appendChild(s);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+function loadEmployees() {
+  jsonp({ action: 'getEmployees' }, res => {
+    if (!res.success) return;
+    document.getElementById('nameGrid').innerHTML = res.data.map(e => `
+      <button class="name-btn" onclick="selectUser('${e.name}')">
+        ${e.name}
+      </button>`).join('');
+  });
+}
+
+function selectUser(name) {
+  currentUser = name;
+  localStorage.setItem('aab_daily_user', name);
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('mainUI').style.display  = 'block';
+  document.getElementById('userName').textContent  = name;
+  loadTasks();
+}
+
+function changeName() { document.getElementById('overlay').style.display = 'flex'; }
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+function loadTasks() {
+  document.getElementById('taskList').innerHTML = '<div class="loading">Loading today\'s tasks…</div>';
+  countdownTimers.forEach(clearInterval);
+  countdownTimers = [];
+  jsonp({ action: 'getTodayLog' }, res => {
+    if (!res.success) {
+      document.getElementById('taskList').innerHTML = '<div class="loading">Failed to load. Try refreshing.</div>';
+      return;
+    }
+    allTasks = res.data;
+    renderTasks();
+  });
+}
+
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTasks();
+}
+
+function getUrgencyClass(cutoffTime, status) {
+  if (status === 'Done')   return 'done';
+  if (status === 'Missed') return 'missed';
+  const today = new Date().toISOString().slice(0,10);
+  const cutoff = new Date(today + 'T' + String(cutoffTime).padStart(5,'0') + ':00');
+  const diffMs = cutoff - new Date();
+  if (diffMs < 0)           return 'missed';
+  if (diffMs < 30*60*1000)  return 'urgent';
+  if (diffMs < 60*60*1000)  return 'warning';
+  return 'safe';
+}
+
+function formatCountdown(cutoffTime, status) {
+  if (status === 'Done')   return { text: 'Completed ✓', cls: 'done' };
+  if (status === 'Missed') return { text: 'Missed', cls: 'missed' };
+  const today  = new Date().toISOString().slice(0,10);
+  const cutoff = new Date(today + 'T' + String(cutoffTime).padStart(5,'0') + ':00');
+  const diffMs = cutoff - new Date();
+  if (diffMs < 0) return { text: 'Overdue', cls: 'urgent' };
+  const h = Math.floor(diffMs / 3600000);
+  const m = Math.floor((diffMs % 3600000) / 60000);
+  const s = Math.floor((diffMs % 60000) / 1000);
+  const cls = diffMs < 30*60*1000 ? 'urgent' : diffMs < 60*60*1000 ? 'warning' : 'safe';
+  return {
+    text: h > 0 ? `${h}h ${m}m remaining` : `${m}m ${s}s remaining`,
+    cls
+  };
+}
+
+function renderTasks() {
+  countdownTimers.forEach(clearInterval);
+  countdownTimers = [];
+
+  let tasks = currentTab === 'mine'
+    ? allTasks.filter(t => t.assignedTo === currentUser)
+    : allTasks;
+
+  // Stats (always mine)
+  const mine    = allTasks.filter(t => t.assignedTo === currentUser);
+  const pending = mine.filter(t => t.status === 'Pending').length;
+  const done    = mine.filter(t => t.status === 'Done').length;
+  const missed  = mine.filter(t => t.status === 'Missed').length;
+  const score   = mine.reduce((s,t) => s + (Number(t.disciplineScore)||0), 0);
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat pending"><div class="stat-num">${pending}</div><div class="stat-label">Pending</div></div>
+    <div class="stat done"><div class="stat-num">${done}</div><div class="stat-label">Done today</div></div>
+    <div class="stat missed"><div class="stat-num">${missed}</div><div class="stat-label">Missed</div></div>
+    <div class="stat score"><div class="stat-num">${score}</div><div class="stat-label">Today's score</div></div>`;
+
+  if (!tasks.length) {
+    document.getElementById('taskList').innerHTML = `
+      <div class="empty"><div class="icon">${currentTab==='mine'?'🎉':'📭'}</div>
+      ${currentTab==='mine' ? 'No tasks assigned to you today.' : 'No tasks logged for today yet.'}</div>`;
+    return;
+  }
+
+  // Sort: Pending first, then Done, then Missed
+  const order = { 'Pending': 0, 'Done': 1, 'Missed': 2 };
+  tasks.sort((a,b) => (order[a.status]||0) - (order[b.status]||0) || a.cutoffTime.localeCompare(b.cutoffTime));
+
+  document.getElementById('taskList').innerHTML = tasks.map(t => {
+    const urgency = getUrgencyClass(t.cutoffTime, t.status);
+    const cd      = formatCountdown(t.cutoffTime, t.status);
+    const isDone  = t.status === 'Done';
+    const isMissed = t.status === 'Missed';
+
+    return `
+    <div class="task-card" id="card-${t.logId}">
+      <div class="card-banner ${urgency}"></div>
+      <div class="card-body">
+        <div class="task-top">
+          <span class="task-id">${t.logId}</span>
+          <span class="task-name">${t.taskName}</span>
+          <span class="status-pill ${t.status}">${t.status}</span>
+        </div>
+        ${currentTab==='all' ? `<div class="assigned-label">👤 ${t.assignedTo}</div>` : ''}
+        <div class="countdown-block ${urgency}">
+          <span class="countdown-icon">${isDone?'✅':isMissed?'❌':'⏱️'}</span>
+          <div class="countdown-info">
+            <div class="countdown-label">${isDone ? 'Closed at' : isMissed ? 'Task missed' : 'Time remaining'}</div>
+            <div class="countdown-time ${cd.cls}" id="cd-${t.logId}">${isDone ? t.closedAt : cd.text}</div>
+            <div class="cutoff-text">Cutoff: ${t.cutoffTime}</div>
+          </div>
+          ${isDone ? `<span class="score-badge">+${t.disciplineScore||0} pts</span>` : ''}
+        </div>
+        ${t.comment ? `
+        <div class="comment-log">
+          <div class="comment-log-title">💬 Updates</div>
+          ${t.comment.split(/\n(?=\[)/).map(e => {
+            const m = e.match(/^\[(.+?)\]\s*(.*)/s);
+            return m
+              ? `<div class="comment-entry"><span class="ts">${m[1]}</span>${m[2]}</div>`
+              : `<div class="comment-entry">${e}</div>`;
+          }).join('')}
+        </div>` : ''}
+        ${!isDone && !isMissed ? `
+        <div class="task-actions">
+          <div class="comment-row">
+            <div class="action-group">
+              <div class="action-label">Add comment (optional)</div>
+              <input class="comment-input" id="comment-${t.logId}" placeholder="Any update before closing…">
+            </div>
+            <button class="close-btn" onclick="closeTask('${t.logId}')">Mark Done ✓</button>
+          </div>
+        </div>` : ''}
+        ${isDone ? `<div class="done-info">✓ Closed ${t.onTime === 'Yes' ? 'on time' : 'late'} · Score: ${t.disciplineScore} pts</div>` : ''}
+        ${isMissed ? `<div class="missed-info">✗ This task was not completed before cutoff.</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Live countdown timers for pending tasks
+  tasks.filter(t => t.status === 'Pending').forEach(t => {
+    const timer = setInterval(() => {
+      const el = document.getElementById('cd-' + t.logId);
+      if (!el) { clearInterval(timer); return; }
+      const cd = formatCountdown(t.cutoffTime, 'Pending');
+      el.textContent = cd.text;
+      el.className   = 'countdown-time ' + cd.cls;
+    }, 1000);
+    countdownTimers.push(timer);
+  });
+}
+
+function closeTask(logId) {
+  const commentEl = document.getElementById('comment-' + logId);
+  const btn       = document.querySelector(`#card-${logId} .close-btn`);
+  btn.disabled    = true;
+  btn.textContent = 'Saving…';
+
+  jsonp({
+    action:  'closeTask',
+    logId,
+    comment: commentEl ? commentEl.value.trim() : ''
+  }, res => {
+    btn.disabled    = false;
+    btn.textContent = 'Mark Done ✓';
+    if (res.success) {
+      showToast(res.onTime ? '✅ Closed on time! +' + res.score + ' pts' : '⚠️ Closed late. +' + res.score + ' pts');
+      loadTasks();
+    } else {
+      showToast('Error: ' + (res.error || 'Failed'));
+    }
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadEmployees();
+if (currentUser) {
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('mainUI').style.display  = 'block';
+  document.getElementById('userName').textContent  = currentUser;
+  loadTasks();
+}
+
+// Auto-refresh every 5 minutes
+setInterval(loadTasks, 5 * 60 * 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAB Daily Tracker — Discipline Report</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --surface: #fff; --surface2: #f0ede6; --border: #e2ddd6;
+    --text: #1a1917; --muted: #7a7670; --accent: #c8401a; --accent-light: #fdf0eb;
+    --green: #1a7a45; --green-light: #eaf5ef; --amber: #a05c00; --amber-light: #fef7ec;
+    --blue: #1a4f8a; --blue-light: #eaf1fb; --red: #b91c1c; --red-light: #fde8e8;
+    --gold: #b8860b; --silver: #8a8a8a; --bronze: #a0622d;
+    --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .header { background: var(--text); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .header-info .title { font-size: 16px; font-weight: 600; }
+  .header-info .sub { font-size: 12px; opacity: 0.6; }
+  .header-links { margin-left: auto; display: flex; gap: 16px; }
+  .header-links a { color: #fff; opacity: 0.6; font-size: 12px; text-decoration: none; }
+  .header-links a:hover { opacity: 1; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .period-tabs { display: flex; gap: 6px; }
+  .period-tab { padding: 7px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 500; transition: all 0.15s; }
+  .period-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .filter-row input[type=month] { padding: 7px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--surface); }
+
+  /* Summary */
+  .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 22px; }
+  .sum-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .sum-num { font-size: 24px; font-weight: 700; }
+  .sum-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .sum-card.total .sum-num    { color: var(--blue); }
+  .sum-card.done .sum-num     { color: var(--green); }
+  .sum-card.missed .sum-num   { color: var(--red); }
+  .sum-card.ontime .sum-num   { color: var(--accent); }
+
+  .section-title { font-size: 15px; font-weight: 600; margin: 24px 0 12px; }
+
+  /* Leaderboard */
+  .leaderboard { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+  .lb-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow); }
+  .lb-rank { font-size: 16px; font-weight: 700; width: 28px; text-align: center; color: var(--muted); }
+  .lb-rank.gold   { color: var(--gold); }
+  .lb-rank.silver { color: var(--silver); }
+  .lb-rank.bronze { color: var(--bronze); }
+  .lb-name { font-weight: 600; font-size: 14px; min-width: 110px; }
+  .lb-stats { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; flex: 1; }
+  .lb-stats b { color: var(--text); }
+  .lb-bar-wrap { flex: 1; min-width: 80px; max-width: 140px; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .lb-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s; }
+  .lb-score { font-size: 18px; font-weight: 700; color: var(--accent); width: 70px; text-align: right; }
+
+  /* Breakdown bars */
+  .bars-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 24px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-label { width: 110px; font-size: 12px; color: var(--muted); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; display: flex; }
+  .bar-seg.ontime  { background: var(--green); }
+  .bar-seg.late    { background: var(--amber); }
+  .bar-seg.missed  { background: var(--red); }
+  .bar-total { width: 36px; text-align: right; font-size: 12px; font-weight: 600; }
+  .legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; }
+
+  /* Detail table */
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); text-align: left; padding: 9px 12px; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); }
+  tr:hover td { background: var(--bg); }
+  .score-cell { font-weight: 700; color: var(--accent); }
+  .rate-good { color: var(--green); font-weight: 600; }
+  .rate-mid  { color: var(--amber); font-weight: 600; }
+  .rate-bad  { color: var(--red); font-weight: 600; }
+
+  .empty { text-align: center; padding: 50px; color: var(--muted); }
+  .loading { text-align: center; padding: 50px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-info">
+    <div class="title">AAB Daily Tracker</div>
+    <div class="sub">Discipline Report</div>
+  </div>
+  <div class="header-links">
+    <a href="tasks.html">Staff view</a>
+    <a href="admin.html">Admin</a>
+    <a href="../works/report.html">Works Report</a>
+    <a href="../bonus-report.html">Bonus Report</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="filter-row">
+    <div class="period-tabs">
+      <button class="period-tab active" onclick="setPeriod('month',this)">This month</button>
+      <button class="period-tab" onclick="setPeriod('week',this)">This week</button>
+      <button class="period-tab" onclick="setPeriod('all',this)">All time</button>
+    </div>
+    <input type="month" id="monthPicker" onchange="setCustomMonth()">
+  </div>
+
+  <div class="summary-grid" id="summaryGrid">
+    <div class="sum-card total"><div class="sum-num">—</div><div class="sum-label">Total tasks</div></div>
+    <div class="sum-card done"><div class="sum-num">—</div><div class="sum-label">Completed</div></div>
+    <div class="sum-card missed"><div class="sum-num">—</div><div class="sum-label">Missed</div></div>
+    <div class="sum-card ontime"><div class="sum-num">—</div><div class="sum-label">On-time rate</div></div>
+  </div>
+
+  <div class="section-title">🏆 Discipline Leaderboard</div>
+  <div class="leaderboard" id="leaderboard"><div class="loading">Loading…</div></div>
+
+  <div class="section-title">📊 Completion breakdown</div>
+  <div class="bars-card">
+    <div id="barsChart"><div class="loading">Loading…</div></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Done on time</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Done late</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Missed</div>
+    </div>
+  </div>
+
+  <div class="section-title">📋 Detail by person</div>
+  <div class="detail-card">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Total</th><th>Done</th><th>Missed</th><th>On Time</th><th>Late</th><th>On-Time Rate</th><th>Total Score</th><th>Avg Score/Task</th></tr>
+      </thead>
+      <tbody id="detailBody"><tr><td colspan="9" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwRJ3IduoV6yUQWLi9pdNT0Yq1Ry5JRK-Z-qEva4MaKll2ZsKGEvXaAO_QzwfKemmAJ0A/exec';
+let period = 'month';
+
+function jsonp(params, cb) {
+  const id = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+  const qs = Object.entries({...params, callback: id}).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const s  = document.createElement('script');
+  window[id] = d => { delete window[id]; s.remove(); cb(d); };
+  s.src = API + '?' + qs;
+  document.head.appendChild(s);
+}
+
+function setPeriod(p, el) {
+  period = p;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('monthPicker').value = '';
+  loadReport();
+}
+
+function setCustomMonth() {
+  period = 'custom';
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  loadReport();
+}
+
+function getMonthParam() {
+  const now = new Date();
+  if (period === 'month')  return now.toISOString().slice(0,7);
+  if (period === 'custom') return document.getElementById('monthPicker').value;
+  return ''; // all or week handled client side
+}
+
+function loadReport() {
+  const month = getMonthParam();
+  jsonp({ action: 'getDisciplineReport', month }, res => {
+    if (!res.success) {
+      document.getElementById('leaderboard').innerHTML = '<div class="empty">Failed to load data.</div>';
+      return;
+    }
+    render(res.data);
+  });
+}
+
+function render(data) {
+  // Week filter (client side)
+  // For week we reload all and filter — getDisciplineReport already filters by month
+  // so for 'week' we pass no month and filter here
+  if (!data.length) {
+    document.getElementById('summaryGrid').innerHTML = `
+      <div class="sum-card total"><div class="sum-num">0</div><div class="sum-label">Total tasks</div></div>
+      <div class="sum-card done"><div class="sum-num">0</div><div class="sum-label">Completed</div></div>
+      <div class="sum-card missed"><div class="sum-num">0</div><div class="sum-label">Missed</div></div>
+      <div class="sum-card ontime"><div class="sum-num">—</div><div class="sum-label">On-time rate</div></div>`;
+    document.getElementById('leaderboard').innerHTML = '<div class="empty">No data for this period.</div>';
+    document.getElementById('barsChart').innerHTML   = '<div class="empty">No data.</div>';
+    document.getElementById('detailBody').innerHTML  = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">No data.</td></tr>';
+    return;
+  }
+
+  const totals = data.reduce((acc, r) => ({
+    total:  acc.total  + r.total,
+    done:   acc.done   + r.done,
+    missed: acc.missed + r.missed,
+    onTime: acc.onTime + r.onTime
+  }), { total:0, done:0, missed:0, onTime:0 });
+
+  const onTimeRate = totals.done ? Math.round(totals.onTime / totals.done * 100) : 0;
+
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="sum-card total"><div class="sum-num">${totals.total}</div><div class="sum-label">Total tasks</div></div>
+    <div class="sum-card done"><div class="sum-num">${totals.done}</div><div class="sum-label">Completed</div></div>
+    <div class="sum-card missed"><div class="sum-num">${totals.missed}</div><div class="sum-label">Missed</div></div>
+    <div class="sum-card ontime"><div class="sum-num">${totals.done ? onTimeRate+'%' : '—'}</div><div class="sum-label">On-time rate</div></div>`;
+
+  // Leaderboard
+  const medals = ['gold','silver','bronze'];
+  const maxScore = Math.max(...data.map(r => r.score), 1);
+  document.getElementById('leaderboard').innerHTML = data.map((r, i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${medals[i]||''}">${i+1}</div>
+      <div class="lb-name">${r.name}</div>
+      <div class="lb-stats">
+        <span><b>${r.done}</b>/${r.total} done</span>
+        <span><b>${r.onTime}</b> on time</span>
+        <span><b>${r.missed}</b> missed</span>
+        <span>avg <b>${r.avgScore}</b>/task</span>
+      </div>
+      <div class="lb-bar-wrap"><div class="lb-bar" style="width:${Math.max(r.score,0)/maxScore*100}%"></div></div>
+      <div class="lb-score">${r.score} pts</div>
+    </div>`).join('');
+
+  // Breakdown bars
+  const maxTotal = Math.max(...data.map(r => r.total), 1);
+  document.getElementById('barsChart').innerHTML = data.map(r => `
+    <div class="bar-row">
+      <div class="bar-label" title="${r.name}">${r.name}</div>
+      <div class="bar-track">
+        ${r.onTime ? `<div class="bar-seg ontime" style="width:${r.onTime/maxTotal*100}%"></div>` : ''}
+        ${r.late   ? `<div class="bar-seg late"   style="width:${r.late/maxTotal*100}%"></div>`   : ''}
+        ${r.missed ? `<div class="bar-seg missed"  style="width:${r.missed/maxTotal*100}%"></div>` : ''}
+      </div>
+      <div class="bar-total">${r.total}</div>
+    </div>`).join('');
+
+  // Detail table
+  document.getElementById('detailBody').innerHTML = data.map(r => {
+    const rate = r.done ? Math.round(r.onTime/r.done*100) : 0;
+    const rateCls = rate >= 80 ? 'rate-good' : rate >= 50 ? 'rate-mid' : 'rate-bad';
+    return `<tr>
+      <td style="font-weight:600">${r.name}</td>
+      <td>${r.total}</td>
+      <td>${r.done}</td>
+      <td style="color:var(--red)">${r.missed}</td>
+      <td style="color:var(--green)">${r.onTime}</td>
+      <td style="color:var(--amber)">${r.late}</td>
+      <td class="${rateCls}">${r.done ? rate+'%' : '—'}</td>
+      <td class="score-cell">${r.score}</td>
+      <td>${r.avgScore}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Init — load this month by default
+loadReport();
+</script>
+</body>
+</html>

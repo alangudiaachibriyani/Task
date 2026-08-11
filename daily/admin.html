@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAB Daily Tracker — Admin</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --surface: #fff; --surface2: #f0ede6; --border: #e2ddd6;
+    --text: #1a1917; --muted: #7a7670; --accent: #c8401a; --accent-light: #fdf0eb;
+    --green: #1a7a45; --green-light: #eaf5ef; --amber: #a05c00; --amber-light: #fef7ec;
+    --blue: #1a4f8a; --blue-light: #eaf1fb; --red: #b91c1c; --red-light: #fde8e8;
+    --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .header { background: var(--text); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .header-info .title { font-size: 16px; font-weight: 600; }
+  .header-info .sub { font-size: 12px; opacity: 0.6; }
+  .header-links { margin-left: auto; display: flex; gap: 16px; }
+  .header-links a { color: #fff; opacity: 0.6; font-size: 12px; text-decoration: none; }
+  .header-links a:hover { opacity: 1; }
+
+  /* PIN */
+  .pin-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .pin-card { background: var(--surface); border-radius: 16px; padding: 36px 32px; width: 320px; text-align: center; box-shadow: var(--shadow); }
+  .pin-card h2 { font-size: 20px; margin-bottom: 6px; }
+  .pin-card p { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .pin-input { width: 100%; padding: 12px; font-size: 20px; text-align: center; letter-spacing: 6px; border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; }
+  .pin-input:focus { outline: none; border-color: var(--accent); }
+  .pin-btn { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .pin-error { color: var(--accent); font-size: 12px; margin-top: 10px; min-height: 16px; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; }
+
+  .tab-row { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* Today overview */
+  .overview-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .ov-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .ov-num { font-size: 26px; font-weight: 700; }
+  .ov-label { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .ov-card.pending .ov-num { color: var(--blue); }
+  .ov-card.done .ov-num { color: var(--green); }
+  .ov-card.missed .ov-num { color: var(--red); }
+
+  /* Today log table */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .card-title { font-size: 14px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); text-align: left; padding: 9px 12px; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: var(--bg); }
+  .status-tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 10px; }
+  .status-tag.Pending { background: var(--blue-light); color: var(--blue); }
+  .status-tag.Done    { background: var(--green-light); color: var(--green); }
+  .status-tag.Missed  { background: var(--red-light); color: var(--red); }
+  .ontime-tag { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+  .ontime-tag.yes { background: var(--green-light); color: var(--green); }
+  .ontime-tag.no  { background: var(--red-light); color: var(--red); }
+
+  /* Generate btn */
+  .gen-btn { padding: 9px 18px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gen-msg { font-size: 12px; margin-top: 8px; }
+  .gen-msg.success { color: var(--green); }
+  .gen-msg.error   { color: var(--accent); }
+
+  /* Add ad-hoc form */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .form-card h3 { font-size: 15px; margin-bottom: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field input, .field select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text); }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .form-actions { margin-top: 16px; }
+  .btn-primary { padding: 10px 22px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary:disabled { opacity: 0.5; }
+  .form-msg { font-size: 12px; margin-top: 8px; }
+  .form-msg.success { color: var(--green); }
+  .form-msg.error { color: var(--accent); }
+
+  .empty-row td { text-align: center; padding: 30px; color: var(--muted); }
+  .loading { text-align: center; padding: 30px; color: var(--muted); }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- PIN -->
+<div class="pin-overlay" id="pinOverlay">
+  <div class="pin-card">
+    <h2>Admin Access</h2>
+    <p>Daily Tracker admin panel</p>
+    <input type="password" class="pin-input" id="pinInput" maxlength="6" placeholder="••••" inputmode="numeric">
+    <button class="pin-btn" onclick="checkPin()">Unlock</button>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<div id="mainUI" style="display:none">
+  <div class="header">
+    <div class="header-info">
+      <div class="title">AAB Daily Tracker</div>
+      <div class="sub">Admin Panel</div>
+    </div>
+    <div class="header-links">
+      <a href="tasks.html">Staff view</a>
+      <a href="report.html">Report</a>
+      <a href="../works/admin.html">Works Admin</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab('today',this)">Today's Log</button>
+      <button class="tab" onclick="switchTab('adhoc',this)">+ Add Task</button>
+    </div>
+
+    <!-- Today's Log -->
+    <div id="view-today">
+      <div class="overview-grid" id="overviewGrid">
+        <div class="ov-card pending"><div class="ov-num">—</div><div class="ov-label">Pending</div></div>
+        <div class="ov-card done"><div class="ov-num">—</div><div class="ov-label">Done</div></div>
+        <div class="ov-card missed"><div class="ov-num">—</div><div class="ov-label">Missed</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Today's Tasks — <span id="todayLabel"></span></span>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="gen-btn" id="genBtn" onclick="generateLog()">Generate Today's Log</button>
+          </div>
+        </div>
+        <div id="genMsg" class="gen-msg" style="padding:0 16px 10px"></div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Task</th><th>Assigned To</th><th>Cutoff</th><th>Status</th><th>Closed At</th><th>On Time</th><th>Score</th><th>Comment</th></tr>
+          </thead>
+          <tbody id="logBody"><tr><td colspan="9" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add Ad-hoc Task -->
+    <div id="view-adhoc" style="display:none">
+      <div class="form-card">
+        <h3>Add a one-off task for today</h3>
+        <div class="form-grid">
+          <div class="field" style="grid-column:span 2">
+            <label>Task description</label>
+            <input type="text" id="f_task" placeholder="e.g. Check freezer temperature">
+          </div>
+          <div class="field">
+            <label>Assign to</label>
+            <select id="f_assignedTo"><option value="">Loading…</option></select>
+          </div>
+          <div class="field">
+            <label>Cutoff time (24hr)</label>
+            <input type="time" id="f_cutoff">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="addBtn" onclick="addAdHoc()">Add Task + Send Email</button>
+        </div>
+        <div class="form-msg" id="addMsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwRJ3IduoV6yUQWLi9pdNT0Yq1Ry5JRK-Z-qEva4MaKll2ZsKGEvXaAO_QzwfKemmAJ0A/exec';
+let adminPin = sessionStorage.getItem('aab_daily_pin') || '';
+let employees = [];
+
+const today = new Date();
+document.getElementById('todayLabel').textContent =
+  today.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
+
+function jsonp(params, cb) {
+  const id = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+  const qs = Object.entries({...params, callback: id}).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const s  = document.createElement('script');
+  window[id] = d => { delete window[id]; s.remove(); cb(d); };
+  s.src = API + '?' + qs;
+  document.head.appendChild(s);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function checkPin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  jsonp({ action: 'verifyPin', pin }, res => {
+    if (res.success) {
+      adminPin = pin;
+      sessionStorage.setItem('aab_daily_pin', pin);
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('mainUI').style.display = 'block';
+      init();
+    } else {
+      document.getElementById('pinError').textContent = 'Incorrect PIN.';
+      document.getElementById('pinInput').value = '';
+    }
+  });
+}
+document.getElementById('pinInput').addEventListener('keydown', e => { if (e.key==='Enter') checkPin(); });
+
+function init() {
+  loadEmployees();
+  loadLog();
+}
+
+function loadEmployees() {
+  jsonp({ action: 'getEmployees' }, res => {
+    if (!res.success) return;
+    employees = res.data;
+    document.getElementById('f_assignedTo').innerHTML =
+      employees.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
+  });
+}
+
+function loadLog() {
+  jsonp({ action: 'getTodayLog' }, res => {
+    if (!res.success) {
+      document.getElementById('logBody').innerHTML = '<tr><td colspan="9" class="loading">Failed to load.</td></tr>';
+      return;
+    }
+    const tasks = res.data;
+    const pending = tasks.filter(t => t.status==='Pending').length;
+    const done    = tasks.filter(t => t.status==='Done').length;
+    const missed  = tasks.filter(t => t.status==='Missed').length;
+    document.getElementById('overviewGrid').innerHTML = `
+      <div class="ov-card pending"><div class="ov-num">${pending}</div><div class="ov-label">Pending</div></div>
+      <div class="ov-card done"><div class="ov-num">${done}</div><div class="ov-label">Done</div></div>
+      <div class="ov-card missed"><div class="ov-num">${missed}</div><div class="ov-label">Missed</div></div>`;
+
+    if (!tasks.length) {
+      document.getElementById('logBody').innerHTML =
+        '<tr class="empty-row"><td colspan="9">No tasks logged today. Click "Generate Today\'s Log" to create them.</td></tr>';
+      return;
+    }
+    document.getElementById('logBody').innerHTML = tasks.map(t => `
+      <tr>
+        <td>${t.logId}</td>
+        <td style="font-weight:600;max-width:200px">${t.taskName}</td>
+        <td>${t.assignedTo}</td>
+        <td>${t.cutoffTime}</td>
+        <td><span class="status-tag ${t.status}">${t.status}</span></td>
+        <td>${t.closedAt || '—'}</td>
+        <td>${t.onTime ? `<span class="ontime-tag ${t.onTime==='Yes'?'yes':'no'}">${t.onTime}</span>` : '—'}</td>
+        <td>${t.disciplineScore || 0}</td>
+        <td style="max-width:180px;font-size:12px;color:var(--muted)">${t.comment || '—'}</td>
+      </tr>`).join('');
+  });
+}
+
+function generateLog() {
+  const btn = document.getElementById('genBtn');
+  const msg = document.getElementById('genMsg');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  jsonp({ action: 'generateTodayLog', pin: adminPin }, res => {
+    btn.disabled = false;
+    btn.textContent = 'Generate Today\'s Log';
+    if (res.success) {
+      msg.className = 'gen-msg success';
+      msg.textContent = `✓ ${res.tasksGenerated} tasks generated and emails sent.`;
+      loadLog();
+    } else {
+      msg.className = 'gen-msg error';
+      msg.textContent = res.error || 'Failed to generate.';
+    }
+  });
+}
+
+function addAdHoc() {
+  const task       = document.getElementById('f_task').value.trim();
+  const assignedTo = document.getElementById('f_assignedTo').value;
+  const cutoffTime = document.getElementById('f_cutoff').value;
+  const msg        = document.getElementById('addMsg');
+  const btn        = document.getElementById('addBtn');
+
+  if (!task || !assignedTo || !cutoffTime) {
+    msg.className = 'form-msg error';
+    msg.textContent = 'Please fill all fields.';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+
+  jsonp({ action: 'addAdHocTask', pin: adminPin, taskName: task, assignedTo, cutoffTime }, res => {
+    btn.disabled = false;
+    btn.textContent = 'Add Task + Send Email';
+    if (res.success) {
+      msg.className = 'form-msg success';
+      msg.textContent = `✓ Task ${res.logId} added and email sent to ${assignedTo}.`;
+      document.getElementById('f_task').value = '';
+      document.getElementById('f_cutoff').value = '';
+    } else {
+      msg.className = 'form-msg error';
+      msg.textContent = res.error || 'Failed.';
+    }
+  });
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('view-today').style.display = tab==='today' ? 'block' : 'none';
+  document.getElementById('view-adhoc').style.display = tab==='adhoc' ? 'block' : 'none';
+  if (tab==='today') loadLog();
+}
+
+if (adminPin) {
+  jsonp({ action: 'verifyPin', pin: adminPin }, res => {
+    if (res.success) {
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('mainUI').style.display = 'block';
+      init();
+    }
+  });
+}
+</script>
+</body>
+</html>
