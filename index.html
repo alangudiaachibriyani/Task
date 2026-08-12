@@ -66,19 +66,7 @@
   .system-card.daily .system-card-header { border-top: 3px solid var(--amber); }
   .system-card.bonus .system-card-header { border-top: 3px solid var(--green); }
 
-  /* Bonus card — spans full width */
-  .bonus-row { margin-bottom: 32px; }
-  .bonus-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; align-items: stretch; }
-  .bonus-card-left { padding: 22px 24px; flex: 1; border-top: 3px solid var(--green); }
-  .bonus-card-left h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-  .bonus-card-left p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 440px; }
-  .bonus-weights { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
-  .bw-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-  .bw-dot { width: 10px; height: 10px; border-radius: 2px; }
-  .bw-pct { font-weight: 700; }
-  .bonus-card-right { display: flex; align-items: center; justify-content: center; padding: 22px 28px; border-left: 1px solid var(--border); }
-  .bonus-btn { display: inline-block; padding: 12px 28px; background: var(--green); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; transition: opacity 0.15s; white-space: nowrap; }
-  .bonus-btn:hover { opacity: 0.88; }
+
 
   /* Quick guide */
   .guide-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); }
@@ -205,23 +193,7 @@
 
   </div>
 
-  <!-- Bonus Report -->
-  <div class="bonus-row">
-    <div class="bonus-card">
-      <div class="bonus-card-left">
-        <h3>🏅 Bonus & Profit Share Report</h3>
-        <p>Combines Works Score and Discipline Score to calculate each team member's share of the bonus pool. Enter a month and pool amount to see exact figures.</p>
-        <div class="bonus-weights">
-          <div class="bw-item"><div class="bw-dot" style="background:var(--accent)"></div><span class="bw-pct">40%</span> Works Score</div>
-          <div class="bw-item"><div class="bw-dot" style="background:var(--amber)"></div><span class="bw-pct">40%</span> Discipline Score</div>
-          <div class="bw-item"><div class="bw-dot" style="background:var(--muted)"></div><span class="bw-pct">20%</span> Manual (your call)</div>
-        </div>
-      </div>
-      <div class="bonus-card-right">
-        <a class="bonus-btn" href="bonus-report.html">Open Bonus Report →</a>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Quick guide -->
   <div class="section-label">Daily routine</div>
